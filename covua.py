@@ -185,25 +185,25 @@ class Board:
             if not newb.is_in_check(color):
                 legal.append(move)
         return legal
-    # def evaluate(self):
-    #     # Hàm đánh giá: tổng điểm trắng trừ điểm đen
-    #     score = 0
-    #     for r in range(8):
-    #         for c in range(8):
-    #             p = self.board[r][c]
-    #             if p:
-    #                 v = 0
-    #                 if isinstance(p, Pawn):   v = 1
-    #                 elif isinstance(p, Knight): v = 3
-    #                 elif isinstance(p, Bishop): v = 3
-    #                 elif isinstance(p, Rook):   v = 5
-    #                 elif isinstance(p, Queen):  v = 9
-    #                 # King bỏ qua vì chiếu tướng mới kết thúc
-    #                 if p.color == 'white':
-    #                     score += v
-    #                 else:
-    #                     score -= v
-    #     return score
+    def evaluate(self):
+        # Hàm đánh giá: tổng điểm trắng trừ điểm đen
+        score = 0
+        for r in range(8):
+            for c in range(8):
+                p = self.board[r][c]
+                if p:
+                    v = 0
+                    if isinstance(p, Pawn):   v = 1
+                    elif isinstance(p, Knight): v = 3
+                    elif isinstance(p, Bishop): v = 3
+                    elif isinstance(p, Rook):   v = 5
+                    elif isinstance(p, Queen):  v = 9
+                    # King bỏ qua vì chiếu tướng mới kết thúc
+                    if p.color == 'white':
+                        score += v
+                    else:
+                        score -= v
+        return score
     # Hàm heuristic 2
     # def evaluate(self):
     #     score = 0
@@ -255,96 +255,96 @@ class Board:
     #     return score
     #
     # Hàm heuristic 3
-    def evaluate(self):
-        # Đoạn này gần giống với heuristic của Vi
-        score = 0
-        piece_value = {
-            Pawn: 1,
-            Knight: 3,
-            Bishop: 3,
-            Rook: 5,
-            Queen: 9,
-            King: 0
-        }
-        center_squares = [(4,2), (4,3), (4,4), (4,5), (3,2), (3,3), (3,4), (3,5)]
-        near_center_squares = [(5,2), (5,3), (5,4), (5,5), (2,2), (2,3), (2,4), (2,5)]
-        # Đếm số quân bị đe dọa và tính linh hoạt
-        white_threats = 0
-        black_threats = 0
-        white_mobility = 0
-        black_mobility = 0
-        for r in range(8):
-            for c in range(8):
-                p = self.board[r][c]
-                if p:
-                    # Giá trị vật chất
-                    value = piece_value[type(p)]
-                    # Kiểm soát trung tâm và gần trung tâm
-                    center_bonus = 0
-                    if (r, c) in center_squares:
-                        center_bonus = 0.4 # Thưởng nhiều hơn cho trung tâm
-                    elif (r, c) in near_center_squares:
-                        center_bonus = 0.2 # Thưởng ít hơn cho vùng gần trung tâm
-                    # Tính linh hoạt (mobility) và đe dọa
-                    attack_bonus = 0
-                    moves = p.get_moves(self, r, c)
-                    move_count = len(moves)
-                    enemy_color = 'black' if p.color == 'white' else 'white'
-                    for dest in moves:
-                        target = self.board[dest[0]][dest[1]]
-                        if target and target.color == enemy_color:
-                            attack_bonus += 0.25 # Thưởng cho mỗi quân địch bị đe dọa
-                    # Cộng điểm linh hoạt
-                    mobility_bonus = move_count * 0.1 # Thưởng 0.1 điểm cho mỗi nước đi hợp lệ
-                    # Cộng điểm cho bên tương ứng
-                    if p.color == 'white':
-                        score += value + center_bonus + attack_bonus + mobility_bonus
-                        white_threats += attack_bonus
-                        white_mobility += move_count
-                    else:
-                        score -= value + center_bonus + attack_bonus + mobility_bonus
-                        black_threats += attack_bonus
-                        black_mobility += move_count
-        # An toàn Vua
-        white_king_pos = self.get_king_position('white')
-        black_king_pos = self.get_king_position('black')
-        # Phạt nếu Vua ở vị trí nguy hiểm (gần trung tâm hoặc bị đe dọa nhiều)
-        if white_king_pos:
-            r, c = white_king_pos
-            # Phạt nếu Vua ở trung tâm (ít an toàn)
-            king_safety = 0
-            if (r, c) in center_squares:
-                king_safety -= 0.5
-            # Phạt nếu Vua bị nhiều quân đe dọa
-            attackers = 0
-            for r2 in range(8):
-                for c2 in range(8):
-                    p = self.board[r2][c2]
-                    if p and p.color == 'black':
-                        if white_king_pos in p.get_moves(self, r2, c2):
-                            attackers += 1
-            king_safety -= attackers * 0.3
-            score += king_safety
-        if black_king_pos:
-            r, c = black_king_pos
-            king_safety = 0
-            if (r, c) in center_squares:
-                king_safety -= 0.5
-            attackers = 0
-            for r2 in range(8):
-                for c2 in range(8):
-                    p = self.board[r2][c2]
-                    if p and p.color == 'white':
-                        if black_king_pos in p.get_moves(self, r2, c2):
-                            attackers += 1
-            king_safety -= attackers * 0.3
-            score -= king_safety
-        # Ưu tiên chiếu vua
-        if self.is_in_check('white'):
-            score -= 0.6
-        if self.is_in_check('black'):
-            score += 0.6
-        return score
+    # def evaluate(self):
+    #     # Đoạn này gần giống với heuristic của Vi
+    #     score = 0
+    #     piece_value = {
+    #         Pawn: 1,
+    #         Knight: 3,
+    #         Bishop: 3,
+    #         Rook: 5,
+    #         Queen: 9,
+    #         King: 0
+    #     }
+    #     center_squares = [(4,2), (4,3), (4,4), (4,5), (3,2), (3,3), (3,4), (3,5)]
+    #     near_center_squares = [(5,2), (5,3), (5,4), (5,5), (2,2), (2,3), (2,4), (2,5)]
+    #     # Đếm số quân bị đe dọa và tính linh hoạt
+    #     white_threats = 0
+    #     black_threats = 0
+    #     white_mobility = 0
+    #     black_mobility = 0
+    #     for r in range(8):
+    #         for c in range(8):
+    #             p = self.board[r][c]
+    #             if p:
+    #                 # Giá trị vật chất
+    #                 value = piece_value[type(p)]
+    #                 # Kiểm soát trung tâm và gần trung tâm
+    #                 center_bonus = 0
+    #                 if (r, c) in center_squares:
+    #                     center_bonus = 0.4 # Thưởng nhiều hơn cho trung tâm
+    #                 elif (r, c) in near_center_squares:
+    #                     center_bonus = 0.2 # Thưởng ít hơn cho vùng gần trung tâm
+    #                 # Tính linh hoạt (mobility) và đe dọa
+    #                 attack_bonus = 0
+    #                 moves = p.get_moves(self, r, c)
+    #                 move_count = len(moves)
+    #                 enemy_color = 'black' if p.color == 'white' else 'white'
+    #                 for dest in moves:
+    #                     target = self.board[dest[0]][dest[1]]
+    #                     if target and target.color == enemy_color:
+    #                         attack_bonus += 0.25 # Thưởng cho mỗi quân địch bị đe dọa
+    #                 # Cộng điểm linh hoạt
+    #                 mobility_bonus = move_count * 0.1 # Thưởng 0.1 điểm cho mỗi nước đi hợp lệ
+    #                 # Cộng điểm cho bên tương ứng
+    #                 if p.color == 'white':
+    #                     score += value + center_bonus + attack_bonus + mobility_bonus
+    #                     white_threats += attack_bonus
+    #                     white_mobility += move_count
+    #                 else:
+    #                     score -= value + center_bonus + attack_bonus + mobility_bonus
+    #                     black_threats += attack_bonus
+    #                     black_mobility += move_count
+    #     # An toàn Vua
+    #     white_king_pos = self.get_king_position('white')
+    #     black_king_pos = self.get_king_position('black')
+    #     # Phạt nếu Vua ở vị trí nguy hiểm (gần trung tâm hoặc bị đe dọa nhiều)
+    #     if white_king_pos:
+    #         r, c = white_king_pos
+    #         # Phạt nếu Vua ở trung tâm (ít an toàn)
+    #         king_safety = 0
+    #         if (r, c) in center_squares:
+    #             king_safety -= 0.5
+    #         # Phạt nếu Vua bị nhiều quân đe dọa
+    #         attackers = 0
+    #         for r2 in range(8):
+    #             for c2 in range(8):
+    #                 p = self.board[r2][c2]
+    #                 if p and p.color == 'black':
+    #                     if white_king_pos in p.get_moves(self, r2, c2):
+    #                         attackers += 1
+    #         king_safety -= attackers * 0.3
+    #         score += king_safety
+    #     if black_king_pos:
+    #         r, c = black_king_pos
+    #         king_safety = 0
+    #         if (r, c) in center_squares:
+    #             king_safety -= 0.5
+    #         attackers = 0
+    #         for r2 in range(8):
+    #             for c2 in range(8):
+    #                 p = self.board[r2][c2]
+    #                 if p and p.color == 'white':
+    #                     if black_king_pos in p.get_moves(self, r2, c2):
+    #                         attackers += 1
+    #         king_safety -= attackers * 0.3
+    #         score -= king_safety
+    #     # Ưu tiên chiếu vua
+    #     if self.is_in_check('white'):
+    #         score -= 0.6
+    #     if self.is_in_check('black'):
+    #         score += 0.6
+    #     return score
                         
 
 
