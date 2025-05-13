@@ -10,7 +10,7 @@
 #Knight (Mã)
 
 #Pawn (Tốt)
-
+# Luật cờ
 class Piece: 
     def __init__ (self, color):
         self.color = color 
@@ -39,107 +39,6 @@ class Pawn(Piece):
                 if target and target.color == enemy:
                     moves.append((nr, nc))
         return moves
-class Board: 
-    def __init__ (self):
-        self.board = [[None for _ in range(8)] for _ in  range(8)]
-        self.board[0] = [Rook('black'), Knight('black'), Bishop('black'), 
-                         Queen('black'), King('black'), Bishop('black'), Knight('black'), Rook('black')]
-        for c in range(8):
-            self.board[1][c] = Pawn('black')
-        # Đặt quân trắng ở hàng 6-7
-        self.board[7] = [Rook('white'), Knight('white'), Bishop('white'), 
-                         Queen('white'), King('white'), Bishop('white'), Knight('white'), Rook('white')]
-        for c in range(8):
-            self.board[6][c] = Pawn('white')
-
-    def get_king_position(self, color):
-        # Tìm vị trí vua của màu chỉ định
-        for r in range(8):
-            for c in range(8):
-                p = self.board[r][c]
-                if isinstance(p, King) and p.color == color:
-                    return (r, c)
-        return None
-    def is_in_check(self, color):
-        # Kiểm tra xem màu chỉ định có bị chiếu (có bị đe dọa bởi quân địch) không
-        pos = self.get_king_position(color)
-        if pos is None:
-            return True
-        enemy = 'black' if color=='white' else 'white'
-        for r in range(8):
-            for c in range(8):
-                p = self.board[r][c]
-                if p and p.color == enemy:
-                    if pos in p.get_moves(self, r, c):
-                        return True
-        return False
-    def move_piece(self, move):
-        # Thực hiện di chuyển (và phong cấp nếu pawn tới cuối bàn)
-        (r1,c1), (r2,c2) = move # xuất phát và đích
-        p = self.board[r1][c1]
-        # Phong cấp pawn
-        if isinstance(p, Pawn) and (r2 == 0 or r2 == 7):
-            self.board[r2][c2] = Queen(p.color)
-            self.board[r1][c1] = None
-        else:
-            self.board[r2][c2] = p
-            self.board[r1][c1] = None
-    def get_all_moves(self, color):
-        # Sinh tất cả nước đi (hợp lệ) của một màu
-        moves = []
-        for r in range(8):
-            for c in range(8):
-                p = self.board[r][c]
-                if p and p.color == color:
-                    for dest in p.get_moves(self, r, c):
-                        moves.append(((r,c), dest))
-        # Lọc bớt các nước đi khiến chính mình bị chiếu
-        legal = []
-        import copy
-        for move in moves:
-            newb = copy.deepcopy(self)#tao bản sao bàn cờ hiện tại 
-            newb.move_piece(move) 
-            if not newb.is_in_check(color):
-                legal.append(move)
-        return legal
-    def evaluate(self):
-        # Hàm đánh giá: tổng điểm trắng trừ điểm đen
-        score = 0
-        for r in range(8):
-            for c in range(8):
-                p = self.board[r][c]
-                if p:
-                    v = 0
-                    if isinstance(p, Pawn):   v = 1
-                    elif isinstance(p, Knight): v = 3
-                    elif isinstance(p, Bishop): v = 3
-                    elif isinstance(p, Rook):   v = 5
-                    elif isinstance(p, Queen):  v = 9
-                    # King bỏ qua vì chiếu tướng mới kết thúc
-                    if p.color == 'white':
-                        score += v
-                    else:
-                        score -= v
-        return score
-    def evaluate(self):
-        # Hàm đánh giá: tổng điểm trắng trừ điểm đen
-        score = 0
-        for r in range(8):
-            for c in range(8):
-                p = self.board[r][c]
-                if p:
-                    v = 0
-                    if isinstance(p, Pawn):   v = 1
-                    elif isinstance(p, Knight): v = 3
-                    elif isinstance(p, Bishop): v = 3
-                    elif isinstance(p, Rook):   v = 5
-                    elif isinstance(p, Queen):  v = 9
-                    # King bỏ qua vì chiếu tướng mới kết thúc
-                    if p.color == 'white':
-                        score += v
-                    else:
-                        score -= v
-        return score
 class Rook(Piece):
     def __init__(self, color):
         super().__init__(color)
@@ -222,6 +121,232 @@ class Queen (Piece):
                     break
                 nr += dr; nc += dc
         return moves   
+# Board
+class Board: 
+    def __init__ (self):
+        self.board = [[None for _ in range(8)] for _ in  range(8)]
+        self.board[0] = [Rook('black'), Knight('black'), Bishop('black'), 
+                         Queen('black'), King('black'), Bishop('black'), Knight('black'), Rook('black')]
+        for c in range(8):
+            self.board[1][c] = Pawn('black')
+        # Đặt quân trắng ở hàng 6-7
+        self.board[7] = [Rook('white'), Knight('white'), Bishop('white'), 
+                         Queen('white'), King('white'), Bishop('white'), Knight('white'), Rook('white')]
+        for c in range(8):
+            self.board[6][c] = Pawn('white')
+
+    def get_king_position(self, color):
+        # Tìm vị trí vua của màu chỉ định
+        for r in range(8):
+            for c in range(8):
+                p = self.board[r][c]
+                if isinstance(p, King) and p.color == color:
+                    return (r, c)
+        return None
+    def is_in_check(self, color):
+        # Kiểm tra xem màu chỉ định có bị chiếu (có bị đe dọa bởi quân địch) không
+        pos = self.get_king_position(color)
+        if pos is None:
+            return True
+        enemy = 'black' if color=='white' else 'white'
+        for r in range(8):
+            for c in range(8):
+                p = self.board[r][c]
+                if p and p.color == enemy:
+                    if pos in p.get_moves(self, r, c):
+                        return True
+        return False
+    def move_piece(self, move):
+        # Thực hiện di chuyển (và phong cấp nếu pawn tới cuối bàn)
+        (r1,c1), (r2,c2) = move # xuất phát và đích
+        p = self.board[r1][c1]
+        # Phong cấp pawn
+        if isinstance(p, Pawn) and (r2 == 0 or r2 == 7):
+            self.board[r2][c2] = Queen(p.color)
+            self.board[r1][c1] = None
+        else:
+            self.board[r2][c2] = p
+            self.board[r1][c1] = None
+    def get_all_moves(self, color):
+        # Sinh tất cả nước đi (hợp lệ) của một màu
+        moves = []
+        for r in range(8):
+            for c in range(8):
+                p = self.board[r][c]
+                if p and p.color == color:
+                    for dest in p.get_moves(self, r, c):
+                        moves.append(((r,c), dest))
+        # Lọc bớt các nước đi khiến chính mình bị chiếu
+        legal = []
+        import copy
+        for move in moves:
+            newb = copy.deepcopy(self)#tao bản sao bàn cờ hiện tại 
+            newb.move_piece(move) 
+            if not newb.is_in_check(color):
+                legal.append(move)
+        return legal
+    # def evaluate(self):
+    #     # Hàm đánh giá: tổng điểm trắng trừ điểm đen
+    #     score = 0
+    #     for r in range(8):
+    #         for c in range(8):
+    #             p = self.board[r][c]
+    #             if p:
+    #                 v = 0
+    #                 if isinstance(p, Pawn):   v = 1
+    #                 elif isinstance(p, Knight): v = 3
+    #                 elif isinstance(p, Bishop): v = 3
+    #                 elif isinstance(p, Rook):   v = 5
+    #                 elif isinstance(p, Queen):  v = 9
+    #                 # King bỏ qua vì chiếu tướng mới kết thúc
+    #                 if p.color == 'white':
+    #                     score += v
+    #                 else:
+    #                     score -= v
+    #     return score
+    # Hàm heuristic 2
+    # def evaluate(self):
+    #     score = 0
+    
+    #    # Giá trị vật chất của các quân cờ
+    #     piece_value = {
+    #         Pawn: 1,
+    #         Knight: 3,
+    #         Bishop: 3,
+    #         Rook: 5,
+    #         Queen: 9,
+    #         King: 0  # Bỏ qua Vua vì chiếu hết quyết định kết thúc
+    #     }
+    
+    #     # Tọa độ: C4=(4,2), D4=(4,3), E4=(4,4), F4=(4,5), C5=(3,2), D5=(3,3), E5=(3,4), F5=(3,5)
+    #     center_squares = [(4,2), (4,3), (4,4), (4,5), (3,2), (3,3), (3,4), (3,5)]
+    
+    #     for r in range(8):
+    #         for c in range(8):
+    #             p = self.board[r][c]
+    #             if p:
+    #                 # Giá trị vật chất
+    #                 value = piece_value[type(p)]
+                  
+    #                 # Ưu tiên kiểm soát trung tâm
+    #                 center_bonus = 0
+    #                 if (r, c) in center_squares:
+    #                     center_bonus = 0.3  # Thưởng 0.3 điểm cho quân ở trung tâm
+                
+    #                 # Ưu tiên tấn công: Đếm số quân địch bị đe dọa bởi quân này
+    #                 attack_bonus = 0
+    #                 enemy_color = 'black' if p.color == 'white' else 'white'
+    #                 for dest in p.get_moves(self, r, c):
+    #                     target = self.board[dest[0]][dest[1]]
+    #                     if target and target.color == enemy_color:
+    #                         attack_bonus += 0.2  # Thưởng 0.2 điểm cho mỗi quân địch bị đe dọa
+    #                 # Cộng/trừ điểm theo màu
+    #                 if p.color == 'white':
+    #                     score += value + center_bonus + attack_bonus
+    #                 else:
+    #                     score -= value + center_bonus + attack_bonus
+    
+    #     # Ưu tiên chiếu vua
+    #     if self.is_in_check('white'):
+    #         score -= 0.5  # Trừ điểm nếu trắng bị chiếu
+    #     if self.is_in_check('black'):
+    #         score += 0.5  # Cộng điểm nếu đen bị chiếu
+    
+    #     return score
+    #
+    # Hàm heuristic 3
+    def evaluate(self):
+        # Đoạn này gần giống với heuristic của Vi
+        score = 0
+        piece_value = {
+            Pawn: 1,
+            Knight: 3,
+            Bishop: 3,
+            Rook: 5,
+            Queen: 9,
+            King: 0
+        }
+        center_squares = [(4,2), (4,3), (4,4), (4,5), (3,2), (3,3), (3,4), (3,5)]
+        near_center_squares = [(5,2), (5,3), (5,4), (5,5), (2,2), (2,3), (2,4), (2,5)]
+        # Đếm số quân bị đe dọa và tính linh hoạt
+        white_threats = 0
+        black_threats = 0
+        white_mobility = 0
+        black_mobility = 0
+        for r in range(8):
+            for c in range(8):
+                p = self.board[r][c]
+                if p:
+                    # Giá trị vật chất
+                    value = piece_value[type(p)]
+                    # Kiểm soát trung tâm và gần trung tâm
+                    center_bonus = 0
+                    if (r, c) in center_squares:
+                        center_bonus = 0.4 # Thưởng nhiều hơn cho trung tâm
+                    elif (r, c) in near_center_squares:
+                        center_bonus = 0.2 # Thưởng ít hơn cho vùng gần trung tâm
+                    # Tính linh hoạt (mobility) và đe dọa
+                    attack_bonus = 0
+                    moves = p.get_moves(self, r, c)
+                    move_count = len(moves)
+                    enemy_color = 'black' if p.color == 'white' else 'white'
+                    for dest in moves:
+                        target = self.board[dest[0]][dest[1]]
+                        if target and target.color == enemy_color:
+                            attack_bonus += 0.25 # Thưởng cho mỗi quân địch bị đe dọa
+                    # Cộng điểm linh hoạt
+                    mobility_bonus = move_count * 0.1 # Thưởng 0.1 điểm cho mỗi nước đi hợp lệ
+                    # Cộng điểm cho bên tương ứng
+                    if p.color == 'white':
+                        score += value + center_bonus + attack_bonus + mobility_bonus
+                        white_threats += attack_bonus
+                        white_mobility += move_count
+                    else:
+                        score -= value + center_bonus + attack_bonus + mobility_bonus
+                        black_threats += attack_bonus
+                        black_mobility += move_count
+        # An toàn Vua
+        white_king_pos = self.get_king_position('white')
+        black_king_pos = self.get_king_position('black')
+        # Phạt nếu Vua ở vị trí nguy hiểm (gần trung tâm hoặc bị đe dọa nhiều)
+        if white_king_pos:
+            r, c = white_king_pos
+            # Phạt nếu Vua ở trung tâm (ít an toàn)
+            king_safety = 0
+            if (r, c) in center_squares:
+                king_safety -= 0.5
+            # Phạt nếu Vua bị nhiều quân đe dọa
+            attackers = 0
+            for r2 in range(8):
+                for c2 in range(8):
+                    p = self.board[r2][c2]
+                    if p and p.color == 'black':
+                        if white_king_pos in p.get_moves(self, r2, c2):
+                            attackers += 1
+            king_safety -= attackers * 0.3
+            score += king_safety
+        if black_king_pos:
+            r, c = black_king_pos
+            king_safety = 0
+            if (r, c) in center_squares:
+                king_safety -= 0.5
+            attackers = 0
+            for r2 in range(8):
+                for c2 in range(8):
+                    p = self.board[r2][c2]
+                    if p and p.color == 'white':
+                        if black_king_pos in p.get_moves(self, r2, c2):
+                            attackers += 1
+            king_safety -= attackers * 0.3
+            score -= king_safety
+        # Ưu tiên chiếu vua
+        if self.is_in_check('white'):
+            score -= 0.6
+        if self.is_in_check('black'):
+            score += 0.6
+        return score
+                        
+
 
 import math
 def minimax(board, depth, alpha, beta, maximizing):
