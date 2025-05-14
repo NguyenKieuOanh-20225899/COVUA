@@ -10,7 +10,7 @@
 #Knight (Mã)
 
 #Pawn (Tốt)
-
+running = True
 class Piece: 
     def __init__ (self, color):
         self.color = color 
@@ -60,6 +60,7 @@ class Board:
                 if isinstance(p, King) and p.color == color:
                     return (r, c)
         return None
+    
     def is_in_check(self, color):
         # Kiểm tra xem màu chỉ định có bị chiếu (có bị đe dọa bởi quân địch) không
         pos = self.get_king_position(color)
@@ -73,6 +74,7 @@ class Board:
                     if pos in p.get_moves(self, r, c):
                         return True
         return False
+    
     def move_piece(self, move):
         # Thực hiện di chuyển (và phong cấp nếu pawn tới cuối bàn)
         (r1,c1), (r2,c2) = move # xuất phát và đích
@@ -121,28 +123,152 @@ class Board:
                     else:
                         score -= v
         return score
-    def evaluate(self):
-        # Hàm đánh giá: tổng điểm trắng trừ điểm đen
+    # Hàm heuristic 2
+    def evaluate_1(self):
         score = 0
+    
+       # Giá trị vật chất của các quân cờ
+        piece_value = {
+            Pawn: 1,
+            Knight: 3,
+            Bishop: 3,
+            Rook: 5,
+            Queen: 9,
+            King: 0  # Bỏ qua Vua vì chiếu hết quyết định kết thúc
+        }
+    
+        # Tọa độ: C4=(4,2), D4=(4,3), E4=(4,4), F4=(4,5), C5=(3,2), D5=(3,3), E5=(3,4), F5=(3,5)
+        center_squares = [(4,2), (4,3), (4,4), (4,5), (3,2), (3,3), (3,4), (3,5)]
+    
         for r in range(8):
             for c in range(8):
                 p = self.board[r][c]
                 if p:
-                    v = 0
-                    if isinstance(p, Pawn):   v = 1
-                    elif isinstance(p, Knight): v = 3
-                    elif isinstance(p, Bishop): v = 3
-                    elif isinstance(p, Rook):   v = 5
-                    elif isinstance(p, Queen):  v = 9
-                    # King bỏ qua vì chiếu tướng mới kết thúc
+                    # Giá trị vật chất
+                    value = piece_value[type(p)]
+                  
+                    # Ưu tiên kiểm soát trung tâm
+                    center_bonus = 0
+                    if (r, c) in center_squares:
+                        center_bonus = 0.3  # Thưởng 0.3 điểm cho quân ở trung tâm
+                
+                    # Ưu tiên tấn công: Đếm số quân địch bị đe dọa bởi quân này
+                    attack_bonus = 0
+                    enemy_color = 'black' if p.color == 'white' else 'white'
+                    for dest in p.get_moves(self, r, c):
+                        target = self.board[dest[0]][dest[1]]
+                        if target and target.color == enemy_color:
+                            attack_bonus += 0.2  # Thưởng 0.2 điểm cho mỗi quân địch bị đe dọa
+                    # Cộng/trừ điểm theo màu
                     if p.color == 'white':
-                        score += v
+                        score += value + center_bonus + attack_bonus
                     else:
-                        score -= v
+                        score -= value + center_bonus + attack_bonus
+    
+        # Ưu tiên chiếu vua
+        if self.is_in_check('white'):
+            score -= 0.5  # Trừ điểm nếu trắng bị chiếu
+        if self.is_in_check('black'):
+            score += 0.5  # Cộng điểm nếu đen bị chiếu
+    
         return score
+    
+    #Hàm heuristic 3
+    def evaluate_2(self):
+        # Đoạn này gần giống với heuristic của Vi
+        score = 0
+        piece_value = {
+            Pawn: 1,
+            Knight: 3,
+            Bishop: 3,
+            Rook: 5,
+            Queen: 9,
+            King: 0
+        }
+        center_squares = [(4,2), (4,3), (4,4), (4,5), (3,2), (3,3), (3,4), (3,5)]
+        near_center_squares = [(5,2), (5,3), (5,4), (5,5), (2,2), (2,3), (2,4), (2,5)]
+        # Đếm số quân bị đe dọa và tính linh hoạt
+        white_threats = 0
+        black_threats = 0
+        white_mobility = 0
+        black_mobility = 0
+        for r in range(8):
+            for c in range(8):
+                p = self.board[r][c]
+                if p:
+                    # Giá trị vật chất
+                    value = piece_value[type(p)]
+                    # Kiểm soát trung tâm và gần trung tâm
+                    center_bonus = 0
+                    if (r, c) in center_squares:
+                        center_bonus = 0.4 # Thưởng nhiều hơn cho trung tâm
+                    elif (r, c) in near_center_squares:
+                        center_bonus = 0.2 # Thưởng ít hơn cho vùng gần trung tâm
+                    # Tính linh hoạt (mobility) và đe dọa
+                    attack_bonus = 0
+                    moves = p.get_moves(self, r, c)
+                    move_count = len(moves)
+                    enemy_color = 'black' if p.color == 'white' else 'white'
+                    for dest in moves:
+                        target = self.board[dest[0]][dest[1]]
+                        if target and target.color == enemy_color:
+                            attack_bonus += 0.25 # Thưởng cho mỗi quân địch bị đe dọa
+                    # Cộng điểm linh hoạt
+                    mobility_bonus = move_count * 0.1 # Thưởng 0.1 điểm cho mỗi nước đi hợp lệ
+                    # Cộng điểm cho bên tương ứng
+                    if p.color == 'white':
+                        score += value + center_bonus + attack_bonus + mobility_bonus
+                        white_threats += attack_bonus
+                        white_mobility += move_count
+                    else:
+                        score -= value + center_bonus + attack_bonus + mobility_bonus
+                        black_threats += attack_bonus
+                        black_mobility += move_count
+        # An toàn Vua
+        white_king_pos = self.get_king_position('white')
+        black_king_pos = self.get_king_position('black')
+        # Phạt nếu Vua ở vị trí nguy hiểm (gần trung tâm hoặc bị đe dọa nhiều)
+        if white_king_pos:
+            r, c = white_king_pos
+            # Phạt nếu Vua ở trung tâm (ít an toàn)
+            king_safety = 0
+            if (r, c) in center_squares:
+                king_safety -= 0.5
+            # Phạt nếu Vua bị nhiều quân đe dọa
+            attackers = 0
+            for r2 in range(8):
+                for c2 in range(8):
+                    p = self.board[r2][c2]
+                    if p and p.color == 'black':
+                        if white_king_pos in p.get_moves(self, r2, c2):
+                            attackers += 1
+            king_safety -= attackers * 0.3
+            score += king_safety
+        if black_king_pos:
+            r, c = black_king_pos
+            king_safety = 0
+            if (r, c) in center_squares:
+                king_safety -= 0.5
+            attackers = 0
+            for r2 in range(8):
+                for c2 in range(8):
+                    p = self.board[r2][c2]
+                    if p and p.color == 'white':
+                        if black_king_pos in p.get_moves(self, r2, c2):
+                            attackers += 1
+            king_safety -= attackers * 0.3
+            score -= king_safety
+        # Ưu tiên chiếu vua
+        if self.is_in_check('white'):
+            score -= 0.6
+        if self.is_in_check('black'):
+            score += 0.6
+        return score
+                        
 class Rook(Piece):
     def __init__(self, color):
         super().__init__(color)
+        
     def get_moves(self, board, r, c):
         moves = []
         # Đi theo 4 hướng: lên, xuống, trái, phải
@@ -194,17 +320,21 @@ class Bishop (Piece):
 class King(Piece):
     def __init__(self, color):
         super().__init__(color)
+        
     def get_moves(self, board, r, c):
         moves = []
-        # Vua đi 1 ô mọi hướng (không tính nhập thành)
-        dirs = [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]
+        # Vua đi 1 ô mọi hướng  tính nhập thành)
+        dirs = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        
         for dr, dc in dirs:
             nr, nc = r+dr, c+dc
             if 0 <= nr < 8 and 0 <= nc < 8:
                 target = board.board[nr][nc]
                 if target is None or target.color != self.color:
                     moves.append((nr, nc))
+            
         return moves
+
 class Queen (Piece):
     def __init__ (self,color):
         super(). __init__(color)
@@ -277,16 +407,14 @@ HEIGHT = 640
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Chess with AI")
 font = pygame.font.SysFont(None, 40)
-WHITE = (232,232,232); BLACK = (125,135,150)
+WHITE = (232,232,232); BLACK = (255, 182, 193)
 # Biến đồng hồ
 font = pygame.font.SysFont(None, 40)
-
+font_1 = pygame.font.SysFont(None, 100)
 # Thời gian giới hạn (5 phút)
-time_limit = 5 * 60 * 1000  # Giới hạn thời gian 5 phút (5 * 60 giây * 1000 milliseconds)
+time_limit = 1 * 60 * 1000  # Giới hạn thời gian 5 phút (5 * 60 giây * 1000 milliseconds)
 start_time = pygame.time.get_ticks()  # Thời gian bắt đầu
-# Người chơi chọn phe
-player_color = input("Chọn phe (white/black): ")
-player_color = 'white' if player_color.lower()!='black' else 'black'
+
 turn = 'white'
 selected = None; valid_moves = []
 square = (WIDTH - 160) // 8
@@ -327,88 +455,250 @@ def draw_board():
     # Nếu vua bị chiếu, vẽ viền đỏ quanh ô vua
     white_king_pos = board.get_king_position('white')
     black_king_pos = board.get_king_position('black')
-
     # Kiểm tra nếu vua trắng bị chiếu
     if board.is_in_check('white') and white_king_pos:
         r, c = white_king_pos
         rect = pygame.Rect(c * square, r * square, square, square)
         pygame.draw.rect(screen, (255, 0, 0), rect, 5)  # Vẽ viền đỏ cho ô vua trắng bị chiếu
+        check_king = board.get_all_moves('white')
 
     # Kiểm tra nếu vua đen bị chiếu
     if board.is_in_check('black') and black_king_pos:
         r, c = black_king_pos
         rect = pygame.Rect(c * square, r * square, square, square)
         pygame.draw.rect(screen, (255, 0, 0), rect, 5)  # Vẽ viền đỏ cho ô vua đen bị chiếu
+        check_king = board.get_all_moves('black')
+def display_lose_message():
+    # Màu nền mờ
+    overlay = pygame.Surface((WIDTH, HEIGHT))  # Tạo một lớp phủ
+    overlay.set_alpha(200)  # Thiết lập độ trong suốt
+    overlay.fill((0, 0, 0))  # Màu đen với độ trong suốt
+    screen.blit(overlay, (0, 0))  # Hiển thị lớp phủ mờ lên màn hình
 
+    # Hiển thị thông báo "LOSE"
+    font = pygame.font.Font(None, 200)
+    lose_text = font.render("LOSE", True, (255, 0, 0))  # Màu đỏ cho chữ LOSE
 
-board = Board()  # Khởi tạo bàn cờ
-running = True
-while running:
-    
-    
-    
-    # Kiểm tra thời gian đã trôi qua
-    elapsed_time = pygame.time.get_ticks() - start_time
-    if elapsed_time >= time_limit:
-        # Nếu đã hết thời gian, dừng trò chơi
-        print("Hết thời gian! Trò chơi kết thúc.")
-        running = False  # Thoát vòng lặp_start_time
+    # Thêm bóng đổ (shadow effect) cho chữ LOSE
+    shadow_text = font.render("LOSE", True, (50, 50, 50))  # Màu xám cho bóng đổ
+    screen.blit(shadow_text, ((WIDTH-160) // 2 - shadow_text.get_width() // 2 + 3, HEIGHT // 3 - shadow_text.get_height() // 2 + 3))  # Vẽ bóng đổ
 
-    
-    # Xử lý sự kiện người dùng
-    if turn == player_color:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False; pygame.quit(); sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                x,y = pygame.mouse.get_pos()
-                if x < WIDTH - 160:
-                    row, col = y//((WIDTH - 160)//8), x//(HEIGHT//8)
-                    if selected:
-                        # Nếu đã chọn quân, và click vào ô trong nước đi hợp lệ -> di chuyển
-                        if (row,col) in valid_moves:
-                            board.move_piece((selected,(row,col)))
-                            turn = 'black' if turn=='white' else 'white'
-                            move_sound.play() 
-                        selected = None; valid_moves = []
-                    else:
-                        # Chọn quân của mình
-                        p = board.board[row][col]
-                        if p and p.color == turn:
-                            selected = (row,col)
-                            # Lấy các nước đi hợp lệ của quân đó
-                            moves = board.get_all_moves(turn)
-                            valid_moves = [dest for (src,dest) in moves if src==selected]
-    else:
-        # Lượt AI đi
-        score, move = minimax(board, 3, -math.inf, math.inf, turn=='white')
-        if move:
-            board.move_piece(move)
-        else:
-            print("Hết nước đi. Kết thúc trò chơi.")
-            running = False
-        turn = 'black' if turn=='white' else 'white'
-    
-    # Vẽ khu vực tính điểm và thời gian
-    screen.fill((0, 0, 0))  # Đặt màu nền cho màn hình là đen
+    # Hiển thị chữ LOSE chính
+    screen.blit(lose_text, ((WIDTH-160) // 2 - lose_text.get_width() // 2, HEIGHT // 3 - lose_text.get_height() // 2))
 
-    # Vẽ khu vực bàn cờ (bên trái màn hình)
-    board_rect = pygame.Rect(0, 0, WIDTH - 160, HEIGHT)
-    pygame.draw.rect(screen, (255, 255, 255), board_rect)  # Nền trắng cho bàn cờ
-    draw_board()  # Vẽ bàn cờ trong khu vực này
+    # Hiển thị lựa chọn "Chơi lại" hoặc "Thoát"
+    restart_rect = pygame.Rect((WIDTH -160) // 2 - 100, HEIGHT // 2, 200, 50)
+    quit_rect = pygame.Rect((WIDTH-160) // 2 - 100, HEIGHT // 2 + 70, 200, 50)
 
-    # Vẽ khu vực hiển thị thời gian và điểm số (bên phải màn hình)
-    info_rect = pygame.Rect(WIDTH - 160, 0, 200, HEIGHT)
-    pygame.draw.rect(screen, (50, 50, 50), info_rect)  # Nền xám cho khu vực hiển thị
+    # Vẽ các nút "Chơi lại" và "Thoát"
+    pygame.draw.rect(screen, (50, 205, 50), restart_rect)  # Nút "Chơi lại" màu xanh lá
+    pygame.draw.rect(screen, (255, 69, 0), quit_rect)  # Nút "Thoát" màu đỏ
+    font_small = pygame.font.Font(None, 50)
+    restart_text = font_small.render("Restart", True, (255, 255, 255))
+    quit_text = font_small.render("Quit", True, (255, 255, 255))
 
-    # Hiển thị thời gian đã trôi qua (Tính bằng phút:giây)
-    elapsed_minutes = elapsed_time // 60000  # Tính phút
-    elapsed_seconds = (elapsed_time % 60000) // 1000  # Tính giây
-    time_text = f"Time: {elapsed_minutes:02}:{elapsed_seconds:02}"
-    
-    # Hiển thị thời gian ngoài màn hình (ở khu vực bên phải)
-    time_surface = font.render(time_text, True, (255, 255, 255))
-    screen.blit(time_surface, (WIDTH - 160, 20))  # Hiển thị thời gian ở góc trên bên phải của khu vực hiển thị
+    screen.blit(restart_text, ((WIDTH-160) // 2 - restart_text.get_width() // 2, HEIGHT // 2 + 10))
+    screen.blit(quit_text, ((WIDTH-160) // 2 - quit_text.get_width() // 2, HEIGHT // 2 + 80))
+def display_choose_color_screen():
+    # Màn hình chọn màu
+    screen.fill((255, 182, 193))  # Nền hồng cho màn hình chọn màu
+
+    # Hiển thị thông báo yêu cầu người chơi chọn phe
+    choose_text = font_1.render("Choose Your Color", True, (255,255,255))
+    screen.blit(choose_text, (WIDTH // 2 - choose_text.get_width() // 2, HEIGHT // 3 - choose_text.get_height() // 2))
+
+    # Vẽ nút "White"
+    white_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
+    pygame.draw.rect(screen, (255, 255, 255), white_rect)  # Nút "White" màu trắng
+    white_text = font.render("White", True, (255, 182, 193))
+    screen.blit(white_text, (WIDTH // 2 - white_text.get_width() // 2, HEIGHT // 2 + 10))
+
+    # Vẽ nút "Black"
+    black_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 70, 200, 50)
+    pygame.draw.rect(screen, (255, 255, 255), black_rect)  # Nút "Black" màu đen
+    black_text = font.render("Black", True, (255, 182, 193))
+    screen.blit(black_text, (WIDTH // 2 - black_text.get_width() // 2, HEIGHT // 2 + 80))
+
+    pygame.display.flip()   
+# Vẽ màn hình chọn mức độ
+def display_choose_difficulty_screen():
+    screen.fill((255, 182, 193))  # Nền hồng cho màn hình chọn mức độ
+
+    choose_text = font_1.render("Choose Your Difficulty", True, (255, 255, 255))
+    screen.blit(choose_text, (WIDTH // 2 - choose_text.get_width() // 2, HEIGHT // 3 - choose_text.get_height() // 2))
+
+    easy_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
+    pygame.draw.rect(screen, (255, 255, 255), easy_rect)
+    easy_text = font.render("Easy", True, (255, 182, 193))
+    screen.blit(easy_text, (WIDTH // 2 - easy_text.get_width() // 2, HEIGHT // 2 + 10))
+
+    medium_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 70, 200, 50)
+    pygame.draw.rect(screen, (255, 255, 255), medium_rect)
+    medium_text = font.render("Medium", True, (255, 182, 193))
+    screen.blit(medium_text, (WIDTH // 2 - medium_text.get_width() // 2, HEIGHT // 2 + 80))
+
+    hard_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 140, 200, 50)
+    pygame.draw.rect(screen, (255, 255, 255), hard_rect)
+    hard_text = font.render("Hard", True, (255, 182, 193))
+    screen.blit(hard_text, (WIDTH // 2 - hard_text.get_width() // 2, HEIGHT // 2 + 150))
 
     pygame.display.flip()
-    pygame.time.Clock().tick(60)
+# Lấy mức độ từ màn hình
+def get_difficulty():
+    difficulty = None
+    while difficulty is None:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = pygame.mouse.get_pos()
+
+                if pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50).collidepoint(x, y):
+                    difficulty = 'easy'
+                elif pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 70, 200, 50).collidepoint(x, y):
+                    difficulty = 'medium'
+                elif pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 140, 200, 50).collidepoint(x, y):
+                    difficulty = 'hard'
+
+    return difficulty
+difficulty = None        
+board = Board()
+game_over = False
+game_started = False
+while running:
+    if difficulty is None:
+        display_choose_difficulty_screen()
+        difficulty = get_difficulty()
+
+    # Tiếp tục với phần code trò chơi (chọn màu cờ và chơi)
+    if difficulty == 'easy':
+        board.evaluate = board.evaluate
+    elif difficulty == 'medium':
+        board.evaluate = board.evaluate_1
+    elif difficulty == 'hard':
+        board.evaluate = board.evaluate_2
+    if not game_started:
+        # Màn hình chọn phe
+        display_choose_color_screen()
+
+        # Kiểm tra sự kiện nhấn phím chọn phe
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = pygame.mouse.get_pos()
+
+                # Kiểm tra xem người chơi có nhấn nút "White"
+                if pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50).collidepoint(x, y):
+                    player_color = 'white'
+                    game_started = True
+                    start_time = pygame.time.get_ticks()  # Bắt đầu thời gian cho bên trắng
+                    turn = 'white'
+                    break
+
+                # Kiểm tra xem người chơi có nhấn nút "Black"
+                elif pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 70, 200, 50).collidepoint(x, y):
+                    player_color = 'black'
+                    game_started = True
+                    start_time = pygame.time.get_ticks()  # Bắt đầu thời gian cho bên đen
+                    turn = 'white'  # Lượt của trắng trước
+                    break
+
+    if game_started:
+    
+    
+        # Kiểm tra thời gian đã trôi qua
+        # neu game over = true thi dưng time
+        if game_over==False:
+            elapsed_time = pygame.time.get_ticks() - start_time
+            if elapsed_time >= time_limit:
+                # Nếu đã hết thời gian, dừng trò chơi
+                print("Hết thời gian! Trò chơi kết thúc.")
+                game_over = True  # Thoát vòng lặp_start_time
+            if board.is_in_check(player_color):
+                if not board.get_all_moves(player_color):
+                    print("Thua! Bạn đã hết nước đi hợp lệ.")
+                    game_over = True  # Đánh dấu trò chơi kết thúc
+
+            
+            # Xử lý sự kiện người dùng
+        if turn == player_color:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False; pygame.quit(); sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN and game_over==False :
+                    x,y = pygame.mouse.get_pos()
+                    if x < WIDTH - 160:
+                        row, col = y//((WIDTH - 160)//8), x//(HEIGHT//8)
+                        if selected:
+                            # Nếu đã chọn quân, và click vào ô trong nước đi hợp lệ -> di chuyển
+                            if (row,col) in valid_moves:
+                                board.move_piece((selected,(row,col)))
+                                turn = 'black' if turn=='white' else 'white'
+                                move_sound.play() 
+                            selected = None; valid_moves = []
+                        else:
+                            # Chọn quân của mình
+                            p = board.board[row][col]
+                            if p and p.color == turn:
+                                selected = (row,col)
+                                # Lấy các nước đi hợp lệ của quân đó
+                                moves = board.get_all_moves(turn)
+                                valid_moves = [dest for (src,dest) in moves if src==selected]
+        else:
+            # Lượt AI đi
+            score, move = minimax(board, 3, -math.inf, math.inf, turn=='white')
+            if move:  
+                board.move_piece(move)
+            else:
+                print("Hết nước đi. Kết thúc trò chơi.")
+                running = False
+            turn = 'black' if turn=='white' else 'white'
+        
+        # Vẽ khu vực tính điểm và thời gian
+        screen.fill((0, 0, 0))  # Đặt màu nền cho màn hình là đen
+
+        # Vẽ khu vực bàn cờ (bên trái màn hình)
+        board_rect = pygame.Rect(0, 0, WIDTH - 160, HEIGHT)
+        pygame.draw.rect(screen, (255, 255, 255), board_rect)  # Nền trắng cho bàn cờ
+        draw_board()  # Vẽ bàn cờ trong khu vực này
+
+        # Vẽ khu vực hiển thị thời gian và điểm số (bên phải màn hình)
+        info_rect = pygame.Rect(WIDTH - 160, 0, 200, HEIGHT)
+        pygame.draw.rect(screen, (50, 50, 50), info_rect)  # Nền xám cho khu vực hiển thị
+
+        # Hiển thị thời gian đã trôi qua (Tính bằng phút:giây)
+        elapsed_minutes = elapsed_time // 60000  # Tính phút
+        elapsed_seconds = (elapsed_time % 60000) // 1000  # Tính giây
+        time_text = f"Time: {elapsed_minutes:02}:{elapsed_seconds:02}"
+        
+        # Hiển thị thời giqqqan ngoài màn hình (ở khu vực bên phải)
+        time_surface = font.render(time_text, True, (255, 255, 255))
+        screen.blit(time_surface, (WIDTH - 160, 20))  # Hiển thị thời gian ở góc trên bên phải của khu vực hiển thị
+        if game_over:
+            # Hiển thị lựa chọn "Chơi lại" hoặc "Thoát"
+            restart_rect = pygame.Rect((WIDTH -160) // 2 - 100, HEIGHT // 2, 200, 50)
+            quit_rect = pygame.Rect((WIDTH-160) // 2 - 100, HEIGHT // 2 + 70, 200, 50)
+            display_lose_message()  # Hiển thị thông báo "LOSE"
+
+            # Kiểm tra sự kiện nhấp chuột để chơi lại hoặc thoát
+            mouse_x, mouse_y = pygame.mouse.get_pos()  # Lấy vị trí chuột
+            mouse_buttons = pygame.mouse.get_pressed()  # Kiểm tra các nút chuột được nhấn
+
+            # Nếu nhấp vào nút "Chơi lại" (nằm trong vùng restart_rect)
+            if mouse_buttons[0] == 1 and restart_rect.collidepoint(mouse_x, mouse_y):
+                board = Board()  # Khởi tạo lại bàn cờ
+                game_over = False
+                start_time = pygame.time.get_ticks()  # Đặt lại thời gian bắt đầu
+
+            # Nếu nhấp vào nút "Thoát" (nằm trong vùng quit_rect)
+            elif mouse_buttons[0] == 1 and quit_rect.collidepoint(mouse_x, mouse_y):
+                 # quay về màn hình chọn mức độ 
+                difficulty = None  
+                
+        pygame.display.flip()
+        pygame.time.Clock().tick(60)
