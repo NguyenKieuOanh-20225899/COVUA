@@ -10,6 +10,8 @@
 #Knight (Mã)
 
 #Pawn (Tốt)
+import math
+import pygame, math, sys, copy
 running = True
 class Piece: 
     def __init__ (self, color):
@@ -39,6 +41,94 @@ class Pawn(Piece):
                 if target and target.color == enemy:
                     moves.append((nr, nc))
         return moves
+class Rook(Piece):
+    def __init__(self, color):
+        super().__init__(color)
+        
+    def get_moves(self, board, r, c):
+        moves = []
+        # Đi theo 4 hướng: lên, xuống, trái, phải
+        dirs = [(-1,0),(1,0),(0,-1),(0,1)]
+        for dr, dc in dirs:
+            nr, nc = r+dr, c+dc
+            while 0 <= nr < 8 and 0 <= nc < 8:
+                if board.board[nr][nc] is None:
+                    moves.append((nr, nc))
+                else:
+                    if board.board[nr][nc].color != self.color:
+                        moves.append((nr, nc))
+                    break
+                nr += dr; nc += dc
+        return moves
+    
+class Knight(Piece):
+    def __init__(self, color):
+        super().__init__(color)
+    def get_moves(self, board, r, c):
+        moves = []
+        # 8 nước có thể của mã
+        offsets = [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)]
+        for dr, dc in offsets:
+            nr, nc = r+dr, c+dc
+            if 0 <= nr < 8 and 0 <= nc < 8:
+                target = board.board[nr][nc]
+                if target is None or target.color != self.color:
+                    moves.append((nr, nc))
+        return moves
+    
+class Bishop (Piece):
+    def __init__(self,color):
+        super().__init__(color)
+    def get_moves(self, board, r, c):
+        moves = []
+        dirs = [(1,1),(1,-1),(-1,1),(-1,-1)]
+        for dr, dc in dirs:
+            nr, nc = r+dr, c+dc
+            while 0 <= nr < 8 and 0 <= nc < 8:
+                if board.board[nr][nc] is None:
+                    moves.append((nr, nc))
+                else:
+                    if board.board[nr][nc].color != self.color:
+                        moves.append((nr, nc))
+                    break
+                nr += dr; nc += dc
+        return moves
+class King(Piece):
+    def __init__(self, color):
+        super().__init__(color)
+        
+    def get_moves(self, board, r, c):
+        moves = []
+        # Vua đi 1 ô mọi hướng  tính nhập thành)
+        dirs = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        
+        for dr, dc in dirs:
+            nr, nc = r+dr, c+dc
+            if 0 <= nr < 8 and 0 <= nc < 8:
+                target = board.board[nr][nc]
+                if target is None or target.color != self.color:
+                    moves.append((nr, nc))
+            
+        return moves
+
+class Queen (Piece):
+    def __init__ (self,color):
+        super(). __init__(color)
+    def get_moves(self, board, r,c):
+        moves = []
+        dirs = [(1,1),(1,-1),(-1,1),(-1,-1),(-1,0),(1,0),(0,-1),(0,1)]
+        for dr,dc in dirs:
+            nr,nc = r+dr, c+dc
+            while 0 <= nr < 8 and 0 <= nc < 8:
+                if board.board[nr][nc] is None:
+                    moves.append((nr, nc))
+                else:
+                    if board.board[nr][nc].color != self.color:
+                        moves.append((nr, nc))
+                    break
+                nr += dr; nc += dc
+        return moves   
+
 class Board: 
     def __init__ (self):
         self.board = [[None for _ in range(8)] for _ in  range(8)]
@@ -265,95 +355,8 @@ class Board:
             score += 0.6
         return score
                         
-class Rook(Piece):
-    def __init__(self, color):
-        super().__init__(color)
-        
-    def get_moves(self, board, r, c):
-        moves = []
-        # Đi theo 4 hướng: lên, xuống, trái, phải
-        dirs = [(-1,0),(1,0),(0,-1),(0,1)]
-        for dr, dc in dirs:
-            nr, nc = r+dr, c+dc
-            while 0 <= nr < 8 and 0 <= nc < 8:
-                if board.board[nr][nc] is None:
-                    moves.append((nr, nc))
-                else:
-                    if board.board[nr][nc].color != self.color:
-                        moves.append((nr, nc))
-                    break
-                nr += dr; nc += dc
-        return moves
-    
-class Knight(Piece):
-    def __init__(self, color):
-        super().__init__(color)
-    def get_moves(self, board, r, c):
-        moves = []
-        # 8 nước có thể của mã
-        offsets = [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)]
-        for dr, dc in offsets:
-            nr, nc = r+dr, c+dc
-            if 0 <= nr < 8 and 0 <= nc < 8:
-                target = board.board[nr][nc]
-                if target is None or target.color != self.color:
-                    moves.append((nr, nc))
-        return moves
-    
-class Bishop (Piece):
-    def __init__(self,color):
-        super().__init__(color)
-    def get_moves(self, board, r, c):
-        moves = []
-        dirs = [(1,1),(1,-1),(-1,1),(-1,-1)]
-        for dr, dc in dirs:
-            nr, nc = r+dr, c+dc
-            while 0 <= nr < 8 and 0 <= nc < 8:
-                if board.board[nr][nc] is None:
-                    moves.append((nr, nc))
-                else:
-                    if board.board[nr][nc].color != self.color:
-                        moves.append((nr, nc))
-                    break
-                nr += dr; nc += dc
-        return moves
-class King(Piece):
-    def __init__(self, color):
-        super().__init__(color)
-        
-    def get_moves(self, board, r, c):
-        moves = []
-        # Vua đi 1 ô mọi hướng  tính nhập thành)
-        dirs = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
-        
-        for dr, dc in dirs:
-            nr, nc = r+dr, c+dc
-            if 0 <= nr < 8 and 0 <= nc < 8:
-                target = board.board[nr][nc]
-                if target is None or target.color != self.color:
-                    moves.append((nr, nc))
-            
-        return moves
 
-class Queen (Piece):
-    def __init__ (self,color):
-        super(). __init__(color)
-    def get_moves(self, board, r,c):
-        moves = []
-        dirs = [(1,1),(1,-1),(-1,1),(-1,-1),(-1,0),(1,0),(0,-1),(0,1)]
-        for dr,dc in dirs:
-            nr,nc = r+dr, c+dc
-            while 0 <= nr < 8 and 0 <= nc < 8:
-                if board.board[nr][nc] is None:
-                    moves.append((nr, nc))
-                else:
-                    if board.board[nr][nc].color != self.color:
-                        moves.append((nr, nc))
-                    break
-                nr += dr; nc += dc
-        return moves   
 
-import math
 def minimax(board, depth, alpha, beta, maximizing):
     # Nếu đã đạt độ sâu tối đa hoặc game kết thúc
     if depth == 0:
@@ -395,7 +398,7 @@ def minimax(board, depth, alpha, beta, maximizing):
         return minv, best_move
 
 
-import pygame, math, sys, copy
+
 pygame.init()
 # Khởi tạo âm thanh
 pygame.mixer.init()  # Khởi tạo mixer của pygame để phát âm thanh
@@ -412,7 +415,7 @@ WHITE = (232,232,232); BLACK = (255, 182, 193)
 font = pygame.font.SysFont(None, 40)
 font_1 = pygame.font.SysFont(None, 100)
 # Thời gian giới hạn (5 phút)
-time_limit = 1 * 60 * 1000  # Giới hạn thời gian 5 phút (5 * 60 giây * 1000 milliseconds)
+time_limit = 120 * 60 * 1000  # Giới hạn thời gian 5 phút (5 * 60 giây * 1000 milliseconds)
 start_time = pygame.time.get_ticks()  # Thời gian bắt đầu
 
 turn = 'white'
@@ -651,7 +654,7 @@ while running:
                                 valid_moves = [dest for (src,dest) in moves if src==selected]
         else:
             # Lượt AI đi
-            score, move = minimax(board, 3, -math.inf, math.inf, turn=='white')
+            score, move = minimax(board, 4, -math.inf, math.inf, turn=='white')
             if move:  
                 board.move_piece(move)
             else:
